@@ -28,6 +28,9 @@ struct MyApp {
     ugly_internal_field_name_2: Salut,
     #[inspect(name = "A struct with three floats")]
     vector_struct: Vector,
+    my_enum: MyEnum,
+    #[inspect(no_edit)]
+    my_enum_readonly: MyEnum,
 }
 
 impl Default for MyApp {
@@ -51,14 +54,19 @@ impl Default for MyApp {
                 y: 20.0,
                 z: 30.0,
             },
+            my_enum: MyEnum::AnOptionWithStructData {
+                vec: Default::default(),
+                salut: Default::default(),
+            },
+            my_enum_readonly: MyEnum::AnOptionWithNoData,
         }
     }
 }
 
-#[derive(EguiInspect)]
+#[derive(EguiInspect, PartialEq, Default)]
 struct Salut(i32, f32);
 
-#[derive(EguiInspect)]
+#[derive(EguiInspect, PartialEq, Default)]
 struct Vector {
     #[inspect(name = "X axis")]
     x: f32,
@@ -66,6 +74,12 @@ struct Vector {
     y: f32,
     #[inspect(name = "Z axis")]
     z: f32,
+}
+
+#[derive(EguiInspect, PartialEq)]
+enum MyEnum {
+    AnOptionWithNoData,
+    AnOptionWithStructData { vec: Vector, salut: Salut },
 }
 
 fn custom_bool_inspect(boolean: &mut bool, label: &'static str, ui: &mut egui::Ui) {
