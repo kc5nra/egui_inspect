@@ -1,5 +1,5 @@
 use crate::utils::get_path_str;
-use crate::AttributeArgs;
+use crate::FieldAttr;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
@@ -26,7 +26,7 @@ pub(crate) fn path_is_internally_handled(path_str: &String) -> bool {
 pub(crate) fn try_handle_internal_path(
     field: &Field,
     mutable: bool,
-    attrs: &AttributeArgs,
+    attrs: &FieldAttr,
     loose_field: bool,
 ) -> Option<TokenStream> {
     let path_str = get_path_str(&field.ty);
@@ -52,7 +52,7 @@ pub(crate) fn try_handle_internal_path(
 fn handle_number_path(
     field: &Field,
     mutable: bool,
-    attrs: &AttributeArgs,
+    attrs: &FieldAttr,
     loose_field: bool,
 ) -> Option<TokenStream> {
     let name = &field.ident;
@@ -102,7 +102,7 @@ fn handle_number_path(
     return None;
 }
 
-fn handle_string_path(field: &Field, mutable: bool, attrs: &AttributeArgs) -> Option<TokenStream> {
+fn handle_string_path(field: &Field, mutable: bool, attrs: &FieldAttr) -> Option<TokenStream> {
     let name = &field.ident;
 
     let name_str = match &attrs.name {

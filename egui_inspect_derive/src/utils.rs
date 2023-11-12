@@ -4,7 +4,7 @@ use syn::spanned::Spanned;
 use syn::Type::{Path, Reference};
 use syn::{Field, Type};
 
-use crate::AttributeArgs;
+use crate::FieldAttr;
 
 pub fn get_path_str(type_path: &Type) -> Option<String> {
     match type_path {
@@ -23,7 +23,7 @@ pub fn get_path_str(type_path: &Type) -> Option<String> {
 pub(crate) fn get_default_function_call(
     field: &Field,
     mutable: bool,
-    attrs: &AttributeArgs,
+    attrs: &FieldAttr,
     loose_field: bool,
 ) -> TokenStream {
     let name = &field.ident;

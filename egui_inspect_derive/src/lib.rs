@@ -6,14 +6,14 @@ use syn::{
     FieldsUnnamed, GenericParam, Generics, Index, Variant,
 };
 
-use darling::{FromField, FromMeta};
+use darling::{FromDeriveInput, FromField, FromMeta};
 
 mod internal_paths;
 mod utils;
 
-#[derive(Debug, FromField)]
+#[derive(Debug, FromField, FromDeriveInput)]
 #[darling(attributes(inspect), default)]
-struct AttributeArgs {
+struct FieldAttr {
     /// Name of the field to be displayed on UI labels
     name: Option<String>,
     /// Doesn't generate code for the given field
@@ -36,7 +36,7 @@ struct AttributeArgs {
     custom_func_mut: Option<String>,
 }
 
-impl Default for AttributeArgs {
+impl Default for FieldAttr {
     fn default() -> Self {
         Self {
             name: None,
@@ -53,18 +53,27 @@ impl Default for AttributeArgs {
     }
 }
 
+#[derive(Debug, Default, FromField, FromDeriveInput)]
+#[darling(attributes(inspect), default)]
+struct DeriveAttr {
+    /// Surround in visual border
+    no_border: bool,
+}
+
 #[proc_macro_derive(EguiInspect, attributes(inspect))]
 pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let attr = DeriveAttr::from_derive_input(&input).unwrap();
 
     let name = input.ident;
 
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let inspect = inspect_struct(&input.data, &name, false);
+    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false), !attr.no_border);
 
-    let inspect_mut = inspect_struct(&input.data, &name, true);
+    let inspect_mut =
+        wrap_in_box_optionally(inspect_data(&input.data, &name, true), !attr.no_border);
 
     quote! {
         impl #impl_generics egui_inspect::EguiInspect for #name #ty_generics #where_clause {
@@ -90,11 +99,27 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
     generics
 }
 
-fn inspect_struct(data: &Data, _struct_name: &Ident, mutable: bool) -> TokenStream {
+fn inspect_data(data: &Data, _struct_name: &Ident, mutable: bool) -> TokenStream {
     match *data {
         Data::Struct(ref data) => handle_fields(&data.fields, mutable),
         Data::Enum(ref data_enum) => handle_enum(data_enum, _struct_name, mutable),
         Data::Union(_) => unimplemented!("Unions are not yet supported"),
+    }
+}
+
+fn wrap_in_box_optionally(inner: TokenStream, do_wrap: bool) -> TokenStream {
+    if do_wrap {
+        quote! {
+            egui::Frame::none()
+             .inner_margin(egui::style::Margin {left: 5.0, right: 5.0, bottom: 5.0, top: 5.0})
+             .outer_margin(egui::style::Margin {left: 1.0, right: 1.0, bottom: 1.5, top: 1.5})
+             .stroke(egui::Stroke {width: 0.8, color: egui::Color32::WHITE})
+             .show(ui, |ui| {
+                #inner
+            });
+        }
+    } else {
+        inner
     }
 }
 
@@ -212,7 +237,7 @@ fn handle_fields(fields: &Fields, mutable: bool) -> TokenStream {
 }
 
 fn handle_named_field(f: &Field, mutable: bool, loose: bool) -> TokenStream {
-    let attr = AttributeArgs::from_field(f).expect("Could not get attributes from field");
+    let attr = FieldAttr::from_field(f).expect("Could not get attributes from field");
 
     if attr.hide {
         return quote!();
@@ -260,7 +285,7 @@ fn handle_unnamed_fields(fields: &FieldsUnnamed, mutable: bool) -> TokenStream {
     result
 }
 
-fn handle_custom_func(field: &Field, mutable: bool, attrs: &AttributeArgs) -> Option<TokenStream> {
+fn handle_custom_func(field: &Field, mutable: bool, attrs: &FieldAttr) -> Option<TokenStream> {
     let name = &field.ident;
 
     let name_str = match &attrs.name {

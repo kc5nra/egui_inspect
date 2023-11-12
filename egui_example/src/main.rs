@@ -7,6 +7,7 @@ use egui_inspect::{EguiInspect, InspectNumber};
 use eframe::egui;
 
 #[derive(EguiInspect)]
+#[inspect(no_border)]
 struct MyApp {
     #[inspect(no_edit)]
     string: String,
