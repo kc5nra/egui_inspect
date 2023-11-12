@@ -1,7 +1,7 @@
 use crate::utils::get_path_str;
 use crate::AttributeArgs;
 use proc_macro2::TokenStream;
-use quote::quote_spanned;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::Field;
 
@@ -27,6 +27,7 @@ pub(crate) fn try_handle_internal_path(
     field: &Field,
     mutable: bool,
     attrs: &AttributeArgs,
+    loose_field: bool,
 ) -> Option<TokenStream> {
     let path_str = get_path_str(&field.ty);
 
@@ -41,14 +42,19 @@ pub(crate) fn try_handle_internal_path(
 
     match path_str.as_str() {
         "f64" | "f32" | "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" => {
-            handle_number_path(&field, mutable, &attrs)
+            handle_number_path(&field, mutable, &attrs, loose_field)
         }
         "String" => handle_string_path(&field, mutable, &attrs),
         _ => None,
     }
 }
 
-fn handle_number_path(field: &Field, mutable: bool, attrs: &AttributeArgs) -> Option<TokenStream> {
+fn handle_number_path(
+    field: &Field,
+    mutable: bool,
+    attrs: &AttributeArgs,
+    loose_field: bool,
+) -> Option<TokenStream> {
     let name = &field.ident;
 
     let name_str = match &attrs.name {
@@ -66,15 +72,23 @@ fn handle_number_path(field: &Field, mutable: bool, attrs: &AttributeArgs) -> Op
         return None;
     }
 
+    let base = if loose_field {
+        quote!(#name)
+    } else {
+        quote!(self.#name)
+    };
+
     if mutable && log_slider {
         return Some(quote_spanned! {field.span() => {
-        egui_inspect::InspectNumber::inspect_with_log_slider(&mut self.#name, &#name_str, ui, #min, #max);
+        // egui_inspect::InspectNumber::inspect_with_log_slider(&mut self.#name, &#name_str, ui, #min, #max);
+        #base.inspect_with_log_slider(&#name_str, ui, #min, #max);
             }
         });
     }
     if mutable && slider {
         return Some(quote_spanned! {field.span() => {
-        egui_inspect::InspectNumber::inspect_with_slider(&mut self.#name, &#name_str, ui, #min, #max);
+        // egui_inspect::InspectNumber::inspect_with_slider(&mut self.#name, &#name_str, ui, #min, #max);
+        #base.inspect_with_slider(&#name_str, ui, #min, #max);
             }
         });
     }

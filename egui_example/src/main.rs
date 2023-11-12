@@ -2,7 +2,7 @@
 
 use std::error::Error;
 
-use egui_inspect::EguiInspect;
+use egui_inspect::{EguiInspect, InspectNumber};
 
 use eframe::egui;
 

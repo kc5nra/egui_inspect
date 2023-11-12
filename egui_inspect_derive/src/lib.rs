@@ -224,7 +224,7 @@ fn handle_named_field(f: &Field, mutable: bool, loose: bool) -> TokenStream {
         return ts;
     }
 
-    if let Some(ts) = internal_paths::try_handle_internal_path(&f, mutable, &attr) {
+    if let Some(ts) = internal_paths::try_handle_internal_path(&f, mutable, &attr, loose) {
         return ts;
     }
 
