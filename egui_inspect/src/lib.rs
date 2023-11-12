@@ -53,6 +53,7 @@
 //! - `custom_func_mut` *(String)*: Use custom function for mut inspect (Evaluate the string as a function path)
 //!
 
+use egui::{Frame, Margin, Stroke};
 /// See also [EguiInspect]
 pub use egui_inspect_derive::*;
 
@@ -71,6 +72,40 @@ pub trait InspectNumber {
 pub trait InspectString {
     fn inspect_mut_multiline(&mut self, label: &str, ui: &mut egui::Ui);
     fn inspect_mut_singleline(&mut self, label: &str, ui: &mut egui::Ui);
+}
+
+pub struct FrameStyle {
+    pub inner_margin: Margin,
+    pub outer_margin: Margin,
+    pub stroke: Stroke,
+}
+
+pub static DEFAULT_FRAME_STYLE: FrameStyle = FrameStyle {
+    inner_margin: Margin {
+        left: 5.0,
+        right: 5.0,
+        bottom: 5.0,
+        top: 5.0,
+    },
+    outer_margin: Margin {
+        left: 1.0,
+        right: 1.0,
+        bottom: 1.5,
+        top: 1.5,
+    },
+    stroke: Stroke {
+        width: 0.7,
+        color: egui::Color32::GRAY,
+    },
+};
+
+impl FrameStyle {
+    pub fn to_frame(&self) -> Frame {
+        Frame::none()
+            .inner_margin(self.inner_margin)
+            .outer_margin(self.outer_margin)
+            .stroke(self.stroke)
+    }
 }
 
 pub mod base_type_inspect;

@@ -2,7 +2,8 @@
 
 use std::error::Error;
 
-use egui_inspect::{EguiInspect, InspectNumber};
+use egui::{Color32, Stroke};
+use egui_inspect::{EguiInspect, FrameStyle, InspectNumber, DEFAULT_FRAME_STYLE};
 
 use eframe::egui;
 
@@ -67,7 +68,16 @@ impl Default for MyApp {
     }
 }
 
+static CUSTOM_BOX: FrameStyle = FrameStyle {
+    stroke: Stroke {
+        width: 2.0,
+        color: Color32::RED,
+    },
+    ..DEFAULT_FRAME_STYLE
+};
+
 #[derive(EguiInspect, PartialEq, Default)]
+#[inspect(style = "crate::CUSTOM_BOX")]
 struct Salut(i32, f32);
 
 #[derive(EguiInspect, PartialEq, Default)]

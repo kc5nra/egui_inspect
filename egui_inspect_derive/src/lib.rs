@@ -53,11 +53,12 @@ impl Default for FieldAttr {
     }
 }
 
-#[derive(Debug, Default, FromField, FromDeriveInput)]
+#[derive(Clone, Debug, Default, FromField, FromDeriveInput)]
 #[darling(attributes(inspect), default)]
 struct DeriveAttr {
     /// Surround in visual border
     no_border: bool,
+    style: Option<String>,
 }
 
 #[proc_macro_derive(EguiInspect, attributes(inspect))]
@@ -70,10 +71,9 @@ pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenS
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false), !attr.no_border);
+    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false), attr.clone());
 
-    let inspect_mut =
-        wrap_in_box_optionally(inspect_data(&input.data, &name, true), !attr.no_border);
+    let inspect_mut = wrap_in_box_optionally(inspect_data(&input.data, &name, true), attr);
 
     quote! {
         impl #impl_generics egui_inspect::EguiInspect for #name #ty_generics #where_clause {
@@ -107,19 +107,21 @@ fn inspect_data(data: &Data, _struct_name: &Ident, mutable: bool) -> TokenStream
     }
 }
 
-fn wrap_in_box_optionally(inner: TokenStream, do_wrap: bool) -> TokenStream {
-    if do_wrap {
+fn wrap_in_box_optionally(inner: TokenStream, attr: DeriveAttr) -> TokenStream {
+    if attr.no_border {
+        inner
+    } else {
+        let style_path_str = attr
+            .style
+            .unwrap_or("egui_inspect::DEFAULT_FRAME_STYLE".to_string());
+        let style_path: TokenStream = style_path_str.parse().unwrap();
         quote! {
-            egui::Frame::none()
-             .inner_margin(egui::style::Margin {left: 5.0, right: 5.0, bottom: 5.0, top: 5.0})
-             .outer_margin(egui::style::Margin {left: 1.0, right: 1.0, bottom: 1.5, top: 1.5})
-             .stroke(egui::Stroke {width: 0.8, color: egui::Color32::WHITE})
+            #style_path
+             .to_frame()
              .show(ui, |ui| {
                 #inner
             });
         }
-    } else {
-        inner
     }
 }
 
