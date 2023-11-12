@@ -22,6 +22,8 @@ struct MyApp {
     raw_string: &'static str,
     #[inspect(slider, min = -43.0, max = 125.0)]
     float64: f64,
+    #[inspect(log_slider, min = -43.0, max = 125.0)]
+    log_varied_float64: f64,
     #[inspect(name = "A proper field name")]
     ugly_internal_field_name: u16,
     #[inspect(name = "A tuple struct")]
@@ -47,6 +49,7 @@ impl Default for MyApp {
             ],
             raw_string: "YetAnotherString",
             float64: 6.0,
+            log_varied_float64: 6.0,
             ugly_internal_field_name: 16,
             ugly_internal_field_name_2: Salut(50, 123.45),
             vector_struct: Vector {

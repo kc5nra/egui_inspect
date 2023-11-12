@@ -58,6 +58,7 @@ fn handle_number_path(field: &Field, mutable: bool, attrs: &AttributeArgs) -> Op
 
     let no_edit = attrs.no_edit;
     let slider = attrs.slider;
+    let log_slider = attrs.log_slider;
     let min = attrs.min;
     let max = attrs.max;
 
@@ -65,6 +66,12 @@ fn handle_number_path(field: &Field, mutable: bool, attrs: &AttributeArgs) -> Op
         return None;
     }
 
+    if mutable && log_slider {
+        return Some(quote_spanned! {field.span() => {
+        egui_inspect::InspectNumber::inspect_with_log_slider(&mut self.#name, &#name_str, ui, #min, #max);
+            }
+        });
+    }
     if mutable && slider {
         return Some(quote_spanned! {field.span() => {
         egui_inspect::InspectNumber::inspect_with_slider(&mut self.#name, &#name_str, ui, #min, #max);

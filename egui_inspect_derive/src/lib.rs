@@ -22,6 +22,8 @@ struct AttributeArgs {
     no_edit: bool,
     /// Use slider function for numbers
     slider: bool,
+    /// Use logarithmic slider function for numbers
+    log_slider: bool,
     /// Min value for numbers
     min: f32,
     /// Max value for numbers
@@ -41,6 +43,7 @@ impl Default for AttributeArgs {
             hide: false,
             no_edit: false,
             slider: true,
+            log_slider: false,
             min: 0.0,
             max: 100.0,
             multiline: false,
