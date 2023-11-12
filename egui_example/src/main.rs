@@ -79,7 +79,11 @@ struct Vector {
 #[derive(EguiInspect, PartialEq)]
 enum MyEnum {
     AnOptionWithNoData,
-    AnOptionWithStructData { vec: Vector, salut: Salut },
+    AnOptionWithStructData {
+        vec: Vector,
+        #[inspect(name = "salut_field")]
+        salut: Salut,
+    },
 }
 
 fn custom_bool_inspect(boolean: &mut bool, label: &'static str, ui: &mut egui::Ui) {

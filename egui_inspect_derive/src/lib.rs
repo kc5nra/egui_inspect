@@ -3,7 +3,7 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, parse_quote, Data, DataEnum, DeriveInput, Field, Fields, FieldsNamed,
-    GenericParam, Generics, Index, Variant, FieldsUnnamed,
+    FieldsUnnamed, GenericParam, Generics, Index, Variant,
 };
 
 use darling::{FromField, FromMeta};
@@ -63,7 +63,7 @@ pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenS
 
     let inspect_mut = inspect_struct(&input.data, &name, true);
 
-    let expanded = quote! {
+    quote! {
         impl #impl_generics egui_inspect::EguiInspect for #name #ty_generics #where_clause {
             fn inspect(&self, label: &str, ui: &mut egui::Ui) {
                 #inspect
@@ -72,9 +72,8 @@ pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenS
                 #inspect_mut
             }
         }
-    };
-
-    proc_macro::TokenStream::from(expanded)
+    }
+    .into()
 }
 
 fn add_trait_bounds(mut generics: Generics) -> Generics {
@@ -103,10 +102,12 @@ fn handle_enum(data_enum: &DataEnum, _struct_name: &Ident, mutable: bool) -> Tok
         let current_variant = match self {
             #(#name_arms,)*
         };
-);
+    );
     if mutable {
         let combo_opts = variants.iter().map(|v| variant_combo(v, _struct_name));
-        let inspect_arms = variants.iter().map(|v| variant_inspect_arm(v, _struct_name));
+        let inspect_arms = variants
+            .iter()
+            .map(|v| variant_inspect_arm(v, _struct_name));
         quote!(
             #reflect_variant_name
             ui.horizontal(|ui| {
@@ -121,7 +122,7 @@ fn handle_enum(data_enum: &DataEnum, _struct_name: &Ident, mutable: bool) -> Tok
                 #(#inspect_arms),*
             };
         )
-    } else { 
+    } else {
         quote!(
             #reflect_variant_name
             ui.label(format!("{label}: {current_variant}").as_str());
@@ -151,22 +152,16 @@ fn variant_combo(variant: &Variant, _struct_name: &Ident) -> TokenStream {
     // which would need to take this ident as the base for fields instead of "self".
     match &variant.fields {
         Fields::Named(fields) => {
-            let defaults = fields
-                .named
-                .iter()
-                .map(|f| {
-                    let ident = f.ident.clone();
-                    quote!( #ident: Default::default() )}
-                );
+            let defaults = fields.named.iter().map(|f| {
+                let ident = f.ident.clone();
+                quote!( #ident: Default::default() )
+            });
             quote!(ui.selectable_value(self, 
                                        #_struct_name::#ident { #(#defaults),* }, 
                                        stringify!(#ident)))
         }
         Fields::Unnamed(fields) => {
-            let defaults = fields
-                .unnamed
-                .iter()
-                .map(|_| quote!(Default::default()));
+            let defaults = fields.unnamed.iter().map(|_| quote!(Default::default()));
             quote!(ui.selectable_value(self, #_struct_name::#ident ( #(#defaults),* ), stringify!(#ident)))
         }
         Fields::Unit => {
@@ -180,14 +175,19 @@ fn variant_inspect_arm(variant: &Variant, _struct_name: &Ident) -> TokenStream {
     match &variant.fields {
         Fields::Named(fields) => {
             let field_idents: Vec<_> = fields
+                .clone()
                 .named
                 .iter()
                 .map(|f| {
                     let ident = f.ident.clone();
-                    quote!( #ident )}
-                ).collect();
+                    quote!( #ident )
+                })
+                .collect();
             // TODO: properly refer to trait
-            let inspect_fields = field_idents.iter().map(|f| quote!(#f.inspect_mut(stringify!(#f), ui)));
+            let inspect_fields = fields
+                .named
+                .iter()
+                .map(|f| handle_named_field(f, true, true));
             quote!(#_struct_name::#ident { #(#field_idents),* } => { #(#inspect_fields;)* })
         }
         Fields::Unnamed(_) => {
@@ -202,32 +202,37 @@ fn variant_inspect_arm(variant: &Variant, _struct_name: &Ident) -> TokenStream {
 fn handle_fields(fields: &Fields, mutable: bool) -> TokenStream {
     match fields {
         Fields::Named(ref fields) => handle_named_fields(fields, mutable),
-        Fields::Unnamed(ref fields) => handle_unnamed_fields(fields, mutable), 
+        Fields::Unnamed(ref fields) => handle_unnamed_fields(fields, mutable),
         // Empty implementation for unit fields (needed in plain enum variant for instance)
         Fields::Unit => quote!(),
     }
 }
 
+fn handle_named_field(f: &Field, mutable: bool, loose: bool) -> TokenStream {
+    let attr = AttributeArgs::from_field(f).expect("Could not get attributes from field");
+
+    if attr.hide {
+        return quote!();
+    }
+
+    let mutable = mutable && !attr.no_edit;
+
+    if let Some(ts) = handle_custom_func(&f, mutable, &attr) {
+        return ts;
+    }
+
+    if let Some(ts) = internal_paths::try_handle_internal_path(&f, mutable, &attr) {
+        return ts;
+    }
+
+    return utils::get_default_function_call(&f, mutable, &attr, loose);
+}
+
 fn handle_named_fields(fields: &FieldsNamed, mutable: bool) -> TokenStream {
-    let recurse = fields.named.iter().map(|f| {
-        let attr = AttributeArgs::from_field(f).expect("Could not get attributes from field");
-
-        if attr.hide {
-            return quote!();
-        }
-
-        let mutable = mutable && !attr.no_edit;
-
-        if let Some(ts) = handle_custom_func(&f, mutable, &attr) {
-            return ts;
-        }
-
-        if let Some(ts) = internal_paths::try_handle_internal_path(&f, mutable, &attr) {
-            return ts;
-        }
-
-        return utils::get_default_function_call(&f, mutable, &attr);
-    });
+    let recurse = fields
+        .named
+        .iter()
+        .map(|f| handle_named_field(f, mutable, false));
     quote! {
         ui.strong(label);
         #(#recurse)*
