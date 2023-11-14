@@ -77,7 +77,7 @@ static CUSTOM_BOX: FrameStyle = FrameStyle {
 };
 
 #[derive(EguiInspect, PartialEq, Default)]
-#[inspect(style = "crate::CUSTOM_BOX")]
+#[inspect(style = "crate::CUSTOM_BOX", collapsible)]
 struct Salut(i32, f32);
 
 #[derive(EguiInspect, PartialEq, Default)]

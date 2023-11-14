@@ -58,6 +58,7 @@ impl Default for FieldAttr {
 struct DeriveAttr {
     /// Surround in visual border
     no_border: bool,
+    collapsible: bool,
     style: Option<String>,
 }
 
@@ -71,9 +72,9 @@ pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenS
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false), attr.clone());
+    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false, attr.collapsible), attr.clone());
 
-    let inspect_mut = wrap_in_box_optionally(inspect_data(&input.data, &name, true), attr);
+    let inspect_mut = wrap_in_box_optionally(inspect_data(&input.data, &name, true, attr.collapsible), attr.clone());
 
     quote! {
         impl #impl_generics egui_inspect::EguiInspect for #name #ty_generics #where_clause {
@@ -86,25 +87,6 @@ pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenS
         }
     }
     .into()
-}
-
-fn add_trait_bounds(mut generics: Generics) -> Generics {
-    for param in &mut generics.params {
-        if let GenericParam::Type(ref mut type_param) = *param {
-            type_param
-                .bounds
-                .push(parse_quote!(egui_inspect::EguiInspect));
-        }
-    }
-    generics
-}
-
-fn inspect_data(data: &Data, _struct_name: &Ident, mutable: bool) -> TokenStream {
-    match *data {
-        Data::Struct(ref data) => handle_fields(&data.fields, mutable),
-        Data::Enum(ref data_enum) => handle_enum(data_enum, _struct_name, mutable),
-        Data::Union(_) => unimplemented!("Unions are not yet supported"),
-    }
 }
 
 fn wrap_in_box_optionally(inner: TokenStream, attr: DeriveAttr) -> TokenStream {
@@ -125,6 +107,33 @@ fn wrap_in_box_optionally(inner: TokenStream, attr: DeriveAttr) -> TokenStream {
     }
 }
 
+fn add_trait_bounds(mut generics: Generics) -> Generics {
+    for param in &mut generics.params {
+        if let GenericParam::Type(ref mut type_param) = *param {
+            type_param
+                .bounds
+                .push(parse_quote!(egui_inspect::EguiInspect));
+        }
+    }
+    generics
+}
+
+fn inspect_data(data: &Data, _struct_name: &Ident, mutable: bool, collapsible: bool) -> TokenStream {
+    let t = match *data {
+        Data::Struct(ref data) => handle_fields(&data.fields, mutable),
+        Data::Enum(ref data_enum) => handle_enum(data_enum, _struct_name, mutable),
+        Data::Union(_) => unimplemented!("Unions are not yet supported"),
+    };
+    if collapsible {
+        quote!(ui.collapsing(label, |ui| {
+                #t
+        });)
+    } else {
+        quote!(ui.strong(label);
+               #t)
+    }
+}
+
 fn handle_enum(data_enum: &DataEnum, _struct_name: &Ident, mutable: bool) -> TokenStream {
     let variants: Vec<_> = data_enum.variants.iter().collect();
     let name_arms = variants.iter().map(|v| variant_name_arm(v, _struct_name));
@@ -141,7 +150,6 @@ fn handle_enum(data_enum: &DataEnum, _struct_name: &Ident, mutable: bool) -> Tok
         quote!(
             #reflect_variant_name
             ui.horizontal(|ui| {
-                ui.label(stringify!(#_struct_name));
                 ::egui::ComboBox::new(label, "")
                     .selected_text(current_variant)
                     .show_ui(ui, |ui| {
@@ -155,7 +163,7 @@ fn handle_enum(data_enum: &DataEnum, _struct_name: &Ident, mutable: bool) -> Tok
     } else {
         quote!(
             #reflect_variant_name
-            ui.label(format!("{label}: {current_variant}").as_str());
+            ui.label(current_variant);
             // TODO: readonly held data inspect
         )
     }
@@ -264,7 +272,6 @@ fn handle_named_fields(fields: &FieldsNamed, mutable: bool) -> TokenStream {
         .iter()
         .map(|f| handle_named_field(f, mutable, false));
     quote! {
-        ui.strong(label);
         #(#recurse)*
     }
 }
@@ -281,7 +288,6 @@ fn handle_unnamed_fields(fields: &FieldsUnnamed, mutable: bool) -> TokenStream {
     }
 
     let result = quote! {
-        ui.strong(label);
         #(#recurse)*
     };
     result
