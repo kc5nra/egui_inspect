@@ -60,6 +60,7 @@ struct DeriveAttr {
     no_border: bool,
     collapsible: bool,
     style: Option<String>,
+    on_hover_text: Option<String>,
 }
 
 #[proc_macro_derive(EguiInspect, attributes(inspect))]
@@ -72,9 +73,9 @@ pub fn derive_egui_inspect(input: proc_macro::TokenStream) -> proc_macro::TokenS
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false, attr.collapsible), attr.clone());
+    let inspect = wrap_in_box_optionally(inspect_data(&input.data, &name, false, attr.clone()), attr.clone());
 
-    let inspect_mut = wrap_in_box_optionally(inspect_data(&input.data, &name, true, attr.collapsible), attr.clone());
+    let inspect_mut = wrap_in_box_optionally(inspect_data(&input.data, &name, true, attr.clone()), attr.clone());
 
     quote! {
         impl #impl_generics egui_inspect::EguiInspect for #name #ty_generics #where_clause {
@@ -118,19 +119,28 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
     generics
 }
 
-fn inspect_data(data: &Data, _struct_name: &Ident, mutable: bool, collapsible: bool) -> TokenStream {
+fn inspect_data(data: &Data, _struct_name: &Ident, mutable: bool, attr: DeriveAttr) -> TokenStream {
     let t = match *data {
         Data::Struct(ref data) => handle_fields(&data.fields, mutable),
         Data::Enum(ref data_enum) => handle_enum(data_enum, _struct_name, mutable),
         Data::Union(_) => unimplemented!("Unions are not yet supported"),
     };
-    if collapsible {
+    let t = if attr.collapsible {
         quote!(ui.collapsing(label, |ui| {
                 #t
         });)
     } else {
         quote!(ui.strong(label);
                #t)
+    };
+    if let Some(on_hover_text) = attr.on_hover_text {
+        quote!(
+        ::egui::Frame::none()
+             .show(ui, |ui| {
+                #t
+            }).response.on_hover_text_at_pointer(#on_hover_text);)
+    } else {
+        t
     }
 }
 

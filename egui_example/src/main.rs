@@ -77,7 +77,11 @@ static CUSTOM_BOX: FrameStyle = FrameStyle {
 };
 
 #[derive(EguiInspect, PartialEq, Default)]
-#[inspect(style = "crate::CUSTOM_BOX", collapsible)]
+#[inspect(
+    style = "crate::CUSTOM_BOX",
+    collapsible,
+    on_hover_text = "show when hovering"
+)]
 struct Salut(i32, f32);
 
 #[derive(EguiInspect, PartialEq, Default)]
