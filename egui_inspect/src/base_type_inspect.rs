@@ -142,6 +142,22 @@ impl crate::EguiInspect for bool {
     }
 }
 
+impl crate::EguiInspect for Color32 {
+    fn inspect(&self, label: &str, ui: &mut egui::Ui) {
+        let mut color = self.to_owned();
+        ui.horizontal(|ui| {
+            ui.label(label.to_owned() + ":");
+            ui.color_edit_button_srgba(&mut color);
+        });
+    }
+    fn inspect_mut(&mut self, label: &str, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label(label.to_owned() + ":");
+            ui.color_edit_button_srgba(self);
+        });
+    }
+}
+
 impl<T: crate::EguiInspect, const N: usize> crate::EguiInspect for [T; N] {
     fn inspect(&self, label: &str, ui: &mut Ui) {
         egui::CollapsingHeader::new(label.to_string().add(format!("[{}]", N).as_str())).show(
