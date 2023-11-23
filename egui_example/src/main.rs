@@ -2,7 +2,7 @@
 
 use std::error::Error;
 
-use egui::{Color32, Stroke};
+use egui::{Color32, Stroke, ViewportCommand};
 use egui_inspect::{EguiInspect, FrameStyle, InspectNumber, DEFAULT_FRAME_STYLE};
 
 use eframe::egui;
@@ -120,7 +120,7 @@ impl eframe::App for MyApp {
         });
 
         // Resize the native window to be just the size we need it to be:
-        frame.set_window_size(ctx.used_size());
+        ctx.send_viewport_cmd(ViewportCommand::InnerSize(ctx.used_size()))
     }
 }
 
