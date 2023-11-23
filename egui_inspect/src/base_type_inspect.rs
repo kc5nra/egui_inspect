@@ -147,8 +147,10 @@ impl<T: crate::EguiInspect, const N: usize> crate::EguiInspect for [T; N] {
         egui::CollapsingHeader::new(label.to_string().add(format!("[{}]", N).as_str())).show(
             ui,
             |ui| {
-                for item in self.iter() {
-                    item.inspect("item", ui);
+                for (i, item) in self.iter().enumerate() {
+                    ui.push_id(i, |ui| {
+                        item.inspect("item", ui);
+                    });
                 }
             },
         );
@@ -158,8 +160,10 @@ impl<T: crate::EguiInspect, const N: usize> crate::EguiInspect for [T; N] {
         egui::CollapsingHeader::new(label.to_string().add(format!("[{}]", N).as_str())).show(
             ui,
             |ui| {
-                for item in self.iter_mut() {
-                    item.inspect_mut("item", ui);
+                for (i, item) in self.iter_mut().enumerate() {
+                    ui.push_id(i, |ui| {
+                        item.inspect_mut("item", ui);
+                    });
                 }
             },
         );
@@ -170,8 +174,10 @@ impl<T: crate::EguiInspect + Default> crate::EguiInspect for Vec<T> {
     fn inspect(&self, label: &str, ui: &mut Ui) {
         egui::CollapsingHeader::new(label.to_string().add(format!("[{}]", self.len()).as_str()))
             .show(ui, |ui| {
-                for item in self.iter() {
-                    item.inspect("item", ui);
+                for (i, item) in self.iter().enumerate() {
+                    ui.push_id(i, |ui| {
+                        item.inspect("item", ui);
+                    });
                 }
             });
     }
@@ -183,8 +189,10 @@ impl<T: crate::EguiInspect + Default> crate::EguiInspect for Vec<T> {
             )
             .id_source(label)
             .show(ui, |ui| {
-                for item in self.iter_mut() {
-                    item.inspect_mut("item", ui);
+                for (i, item) in self.iter_mut().enumerate() {
+                    ui.push_id(i, |ui| {
+                        item.inspect_mut("item", ui);
+                    });
                 }
             });
 
